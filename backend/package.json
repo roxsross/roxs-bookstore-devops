@@ -1,0 +1,38 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "BookStore MERN STACK",
+  "main": "server.js",
+  "scripts": {
+    "dev": "NODE_ENV=development nodemon server.js",
+    "build": "npm install && npm install cd frontend && npm run build --prefix frontend",
+    "start": "NODE_ENV=production node server.js",
+    "test": "cross-env NODE_ENV=test jest --testTimeout=30000 --detectOpenHandles"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "mongodb": "^6.11.0",
+    "mongoose": "^8.8.2",
+    "multer": "^1.4.5-lts.1"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "jest": "^29.7.0",
+    "mongodb-memory-server": "^10.1.4",
+    "supertest": "^7.0.0"
+  },
+"jest": {
+  "testEnvironment": "node",
+  "coveragePathIgnorePatterns": [
+    "/node_modules/"
+  ],
+  "testPathIgnorePatterns": [
+    "setupTestDB.js"
+  ]
+}
+}
