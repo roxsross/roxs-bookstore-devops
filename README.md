@@ -3,7 +3,7 @@
 ## Estructura de Archivos Recomendada
 
 ```
-roxs-bookstore-devops/
+bookstore/
 ├── frontend/
 │   ├── Dockerfile
 │   └── ...
@@ -15,11 +15,15 @@ roxs-bookstore-devops/
 │   └── 00-create-user.js
 ├── .env
 ├── docker-compose.yml
+└── deploy.sh
 ```
 
-# Guía para Desplegar Book Store
+
+# Guía Simplificada para Desplegar Book Store
 
 Esta guía te ayudará a desplegar tu aplicación Book Store usando Docker Compose, sin necesidad de configurar autenticación en MongoDB, ideal para entornos de desarrollo local.
+
+![](./docs/1.png)
 
 ## Estructura Recomendada
 
@@ -30,6 +34,7 @@ bookstore/
 │   └── ...
 ├── backend/            # Tu API Express
 │   ├── Dockerfile
+│   ├── health.js       # Endpoint de salud
 │   └── ...
 ├── mongo-init/         # Scripts de inicialización para MongoDB
 │   └── init-db.js      # Carga datos iniciales
@@ -55,10 +60,10 @@ bookstore/
 
 ## Comandos útiles
 
-- **Ver logs**: `docker compose logs -f`
-- **Detener servicios**: `docker compose down`
-- **Reiniciar servicios**: `docker compose restart`
-- **Reconstruir después de cambios en Dockerfile**: `docker compose up -d --build`
+- **Ver logs**: `docker-compose logs -f`
+- **Detener servicios**: `docker-compose down`
+- **Reiniciar servicios**: `docker-compose restart`
+- **Reconstruir después de cambios en Dockerfile**: `docker-compose up -d --build`
 
 
 ## Acceder a MongoDB desde fuera de Docker
@@ -71,11 +76,11 @@ Puedes conectarte a la base de datos usando cualquier cliente MongoDB como Mongo
 
 1. **El frontend no puede conectar con el backend**:
    - Verifica que la variable `API_BASE_URL` esté configurada correctamente
-   - Asegúrate de que el backend esté funcionando (`docker compose logs backend`)
+   - Asegúrate de que el backend esté funcionando (`docker-compose logs backend`)
 
 2. **El backend no puede conectar con MongoDB**:
    - Verifica la URL de conexión en el backend
-   - Comprueba que MongoDB esté funcionando (`docker compose logs mongo`)
+   - Comprueba que MongoDB esté funcionando (`docker-compose logs mongo`)
 
 3. **Los cambios en el código no se reflejan**:
    - Para el frontend, verifica que Vite esté configurado para hot-reload
