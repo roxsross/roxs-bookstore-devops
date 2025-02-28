@@ -1,24 +1,3 @@
-# Guía de Despliegue para Book Store
-
-## Estructura de Archivos Recomendada
-
-```
-bookstore/
-├── frontend/
-│   ├── Dockerfile
-│   └── ...
-├── backend/
-│   ├── Dockerfile
-│   ├── health.js
-│   └── ...
-├── mongo-init/
-│   └── 00-create-user.js
-├── .env
-├── docker-compose.yml
-└── deploy.sh
-```
-
-
 # Guía Simplificada para Desplegar Book Store
 
 Esta guía te ayudará a desplegar tu aplicación Book Store usando Docker Compose, sin necesidad de configurar autenticación en MongoDB, ideal para entornos de desarrollo local.
@@ -34,7 +13,6 @@ bookstore/
 │   └── ...
 ├── backend/            # Tu API Express
 │   ├── Dockerfile
-│   ├── health.js       # Endpoint de salud
 │   └── ...
 ├── mongo-init/         # Scripts de inicialización para MongoDB
 │   └── init-db.js      # Carga datos iniciales
@@ -48,10 +26,10 @@ bookstore/
 1. **Construir y ejecutar con Docker Compose**:
    ```bash
    # Construir las imágenes
-   docker-compose build
+   docker compose build
    
    # Iniciar los servicios
-   docker-compose up -d
+   docker compose up -d
    ```
 
 2. **Verificar que todo funciona**:
@@ -60,10 +38,10 @@ bookstore/
 
 ## Comandos útiles
 
-- **Ver logs**: `docker-compose logs -f`
-- **Detener servicios**: `docker-compose down`
-- **Reiniciar servicios**: `docker-compose restart`
-- **Reconstruir después de cambios en Dockerfile**: `docker-compose up -d --build`
+- **Ver logs**: `docker compose logs -f`
+- **Detener servicios**: `docker compose down`
+- **Reiniciar servicios**: `docker compose restart`
+- **Reconstruir después de cambios en Dockerfile**: `docker compose up -d --build`
 
 
 ## Acceder a MongoDB desde fuera de Docker
@@ -76,11 +54,11 @@ Puedes conectarte a la base de datos usando cualquier cliente MongoDB como Mongo
 
 1. **El frontend no puede conectar con el backend**:
    - Verifica que la variable `API_BASE_URL` esté configurada correctamente
-   - Asegúrate de que el backend esté funcionando (`docker-compose logs backend`)
+   - Asegúrate de que el backend esté funcionando (`docker compose logs backend`)
 
 2. **El backend no puede conectar con MongoDB**:
    - Verifica la URL de conexión en el backend
-   - Comprueba que MongoDB esté funcionando (`docker-compose logs mongo`)
+   - Comprueba que MongoDB esté funcionando (`docker compose logs mongo`)
 
 3. **Los cambios en el código no se reflejan**:
    - Para el frontend, verifica que Vite esté configurado para hot-reload
