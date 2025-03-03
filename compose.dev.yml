@@ -1,0 +1,79 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: ${REGISTRY:-roxsross12}/${REPONAME:-bookstore-front}:${VERSION:-1.0.0}
+    container_name: bookstore-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      - API_BASE_URL=${API:-http://localhost:3333}
+    networks:
+      - mern-stack
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5173"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: ${REGISTRY:-roxsross12}/${REPONAME:-bookstore-back}:${VERSION:-1.0.0}      
+    container_name: bookstore-backend
+    restart: unless-stopped
+    ports:
+      - "3333:3333"
+    environment:
+      - DATABASE_URI=mongodb://mongo:27017/bookstore
+      - CORS_ORIGIN=${CORS:-http://localhost:5173}
+    networks:
+      - mern-stack
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3333/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  mongo:
+    build:
+      context: ./mongo
+      dockerfile: Dockerfile
+    image: ${REGISTRY:-roxsross12}/${REPONAME:-bookstore-mongo}:${VERSION:-1.0.0}     
+    container_name: bookstore-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=bookstore
+    networks:
+      - mern-stack
+    volumes:
+      - mongo-data:/data/db   
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/bookstore --quiet
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+networks:
+  mern-stack:
+    driver: bridge
+    name: bookstore-network
+
+volumes:
+  mongo-data:
+    driver: local
+    name: bookstore-mongo-data

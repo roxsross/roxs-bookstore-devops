@@ -1,4 +1,4 @@
-# Guía Simplificada para Desplegar Book Store
+# Guía para Desplegar Book Store [Local]
 
 Esta guía te ayudará a desplegar tu aplicación Book Store usando Docker Compose, sin necesidad de configurar autenticación en MongoDB, ideal para entornos de desarrollo local.
 
