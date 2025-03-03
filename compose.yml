@@ -47,7 +47,10 @@ services:
         condition: service_healthy
 
   mongo:
-    image: mongo:latest
+    build:
+      context: ./mongo
+      dockerfile: Dockerfile
+    image: ${REGISTRY:-roxsross12}/${REPONAME:-bookstore}:${VERSION_DB:-1.0.0-db}     
     container_name: bookstore-mongo
     restart: unless-stopped
     ports:
@@ -57,8 +60,7 @@ services:
     networks:
       - mern-stack
     volumes:
-      - mongo-data:/data/db
-      - ./mongo-init:/docker-entrypoint-initdb.d      
+      - mongo-data:/data/db   
     healthcheck:
       test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/bookstore --quiet
       interval: 20s
