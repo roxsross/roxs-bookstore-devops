@@ -1,0 +1,93 @@
+name: Terraform Iac
+
+on:
+    push:
+        branches:
+            - develop
+            - main
+        paths:
+            - 'terraform/**'
+    pull_request:
+        branches:
+            - develop
+            - main
+        paths:
+            - 'terraform/**'
+    workflow_dispatch:
+
+permissions:
+    contents: read
+    pull-requests: write
+    issues: write
+
+jobs:
+    terraform:
+        runs-on: ubuntu-latest
+        name: Terraform
+        defaults:
+            run:
+                working-directory: ./terraform
+        outputs:
+            ec2_ip: ${{ steps.terraform_output.outputs.ec2_public_ip }}
+            deployment_ready: ${{ steps.deployment_ready.outputs.ready}}
+        steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+
+        - uses: hashicorp/setup-terraform@v3
+          with:
+            terraform_version: "1.11.0"
+
+        - name: Configure AWS Credentials
+          uses: aws-actions/configure-aws-credentials@v4
+          with:
+            aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+            aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            aws-region: ${{ secrets.AWS_REGION }}  
+
+        - name: Terraform Init 
+          id: init
+          run: terraform init
+
+        - name: Terraform Plan 
+          id: plan
+          run: terraform plan -var-file=terraform.tfvars -out plan.out
+
+        - name: Terraform Apply
+          if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'
+          run: terraform apply "plan.out"
+
+        - name: Terraform Outputs
+          id: terraform_output
+          if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'
+          run: |
+            EC2_IP=$(terraform output -raw instance_public_ip)
+            echo "ec2_public_ip=${EC2_IP}" >> $GITHUB_OUTPUT
+
+        - name: WAIT EC2
+          id: wait_for_ec2
+          if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'
+          run: |
+            echo "Esperando por la EC2"
+            timeout=600
+            interval=10
+            elapsed=0
+            
+            until nc -z -w 5 ${{ steps.terraform_output.outputs.ec2_public_ip }} 22; do
+              if [ $elapsed -ge $timeout ]; then
+                echo "Timeout waiting for EC2 instance to be ready"
+                exit 1
+              fi
+              echo "Waiting for SSH to be available... ($elapsed/$timeout seconds)"
+              sleep $interval
+              elapsed=$((elapsed + interval))
+            done
+            
+            # Additional wait to make sure system is fully initialized
+            sleep 60
+            echo "EC2 instance is ready!"
+
+        - name: Deploy Ready
+          id: deployment_ready
+          if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'
+          run: echo "ready=true" >> $GITHUB_OUTPUT

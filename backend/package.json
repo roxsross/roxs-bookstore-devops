@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "NODE_ENV=development nodemon server.js",
     "build": "npm install && npm install cd frontend && npm run build --prefix frontend",
-    "start": "NODE_ENV=production node server.js",
+    "start": "NODE_ENV=development node server.js",
     "test": "cross-env NODE_ENV=test jest --testTimeout=30000 --detectOpenHandles"
   },
   "keywords": [],
