@@ -17,7 +17,7 @@ bookstore/
 ├── mongo/              # Scripts de inicialización para MongoDB
 │   │── 00-create-user.js # Carga datos iniciales
 │   └── Dockerfile      
-├── docker-compose.yml  # Configuración de servicios
+├── compose.yml  # Configuración de servicios
 
 ```
 
