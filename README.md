@@ -14,10 +14,11 @@ bookstore/
 ├── backend/            # Tu API Express
 │   ├── Dockerfile
 │   └── ...
-├── mongo-init/         # Scripts de inicialización para MongoDB
-│   └── init-db.js      # Carga datos iniciales
+├── mongo/              # Scripts de inicialización para MongoDB
+│   │── 00-create-user.js # Carga datos iniciales
+│   └── Dockerfile      
 ├── docker-compose.yml  # Configuración de servicios
-└── deploy.sh           # Script de despliegue opcional
+
 ```
 
 
