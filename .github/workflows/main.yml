@@ -39,8 +39,8 @@ jobs:
           id: get_version
           run: |
             SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
-            VERSION=$SHORT_SHA
-            echo "Version: {$VERSION}" >> $GITHUB_OUTPUT
+            VERSION="$SHORT_SHA"
+            echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
         - uses: hashicorp/setup-terraform@v3
           with:
@@ -107,7 +107,7 @@ jobs:
                ${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}:${{ needs.check_infra.outputs.version }}-back
 
     build_test_frontend:
-        name: Check Infra Status
+        name: Build Test Frontend
         needs: check_infra
         runs-on: ubuntu-latest   
         defaults:
@@ -145,7 +145,7 @@ jobs:
                ${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}:${{ needs.check_infra.outputs.version }}-front
 
     build_test_mongo:
-        name: Check Infra Status
+        name: Build DB
         needs: check_infra
         runs-on: ubuntu-latest  
         defaults:
