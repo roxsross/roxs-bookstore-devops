@@ -5,14 +5,215 @@ on:
         branches:
             - develop
             - main
+        paths:
+            - 'backend/**'
+            - 'frontend/**'
+            - 'mongo/**'
     pull_request:
         branches:
             - develop
             - main
+        paths:
+            - 'backend/**'
+            - 'frontend/**'
+            - 'mongo/**'
+    workflow_dispatch:
+    workflow_run:
+        workflows: ["Terraform Iac"]
+        types:
+            - completed
+        branches: [ develop, main ]
 
 jobs:
-    build:
+    check_infra:
+        name: Check Infra Status
         runs-on: ubuntu-latest
+        outputs:
+            ec2_ip: ${{ steps.get_ec2_ip.outputs.ec2_ip}}
+            version: ${{ steps.get_version.outputs.version}}     
         steps:
         - name: Checkout code
           uses: actions/checkout@v4
+
+        - name: Generar version de apps
+          id: get_version
+          run: |
+            SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+            VERSION=$SHORT_SHA
+            echo "Version: {$VERSION}" >> $GITHUB_OUTPUT
+
+        - uses: hashicorp/setup-terraform@v3
+          with:
+            terraform_version: "1.11.0"
+  
+        - name: Configure AWS Credentials
+          uses: aws-actions/configure-aws-credentials@v4
+          with:
+            aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+            aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            aws-region: ${{ secrets.AWS_REGION }}        
+
+        - name: Terraform Init 
+          working-directory: ./terraform
+          run: terraform init
+
+        - name: Get EC2 IP
+          id: get_ec2_ip
+          working-directory: ./terraform
+          run: |
+            EC2_IP=$(terraform output -raw instance_public_ip >/dev/null || echo "")
+            if [ -z "$EC2_IP" ]; then
+                echo "Infra no Ready"
+                exit 1
+            fi
+            echo "EC2 esta disponible $EC2_IP"
+            echo "ec2_ip=${EC2_IP}" >> $GITHUB_OUTPUT
+
+    build_test_backend:
+        needs: check_infra
+        name: Build Test Backend
+        runs-on: ubuntu-latest            
+        defaults:
+            run:
+                working-directory: ./backend
+        steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+        - name: Setup Node.js
+          uses: actions/setup-node@v4
+          with:
+            node-version: '20'
+            cache: 'npm'
+            cache-dependency-path: './backend/package-lock.json'
+        - name: Install Depedencies
+          run: npm install
+        - name: Run test
+          run: npm test
+
+        - name: Docker login
+          if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'
+          uses: docker/login-action@v3
+          with:
+            username: ${{ secrets.DOCKER_USERNAME }}
+            password: ${{ secrets.DOCKER_PASSWORD }}
+
+        - name: Docker Build and Push
+          if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'
+          uses: docker/build-push-action@v6
+          with:
+            push: true
+            context: ./backend
+            tags: |
+               ${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}:${{ needs.check_infra.outputs.version }}-back
+
+    build_test_frontend:
+        name: Check Infra Status
+        needs: check_infra
+        runs-on: ubuntu-latest   
+        defaults:
+            run:
+                working-directory: ./frontend
+        steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+
+        - name: Setup Node.js
+          uses: actions/setup-node@v4
+          with:
+            node-version: '20'
+            cache: 'npm'
+            cache-dependency-path: './backend/package-lock.json'
+        - name: Install Depedencies
+          run: npm install
+        - name: Run test
+          run: npm test
+
+        - name: Docker login
+          if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'
+          uses: docker/login-action@v3
+          with:
+            username: ${{ secrets.DOCKER_USERNAME }}
+            password: ${{ secrets.DOCKER_PASSWORD }}
+
+        - name: Docker Build and Push
+          if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'
+          uses: docker/build-push-action@v6
+          with:
+            push: true
+            context: ./frontend
+            tags: |
+               ${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}:${{ needs.check_infra.outputs.version }}-front
+
+    build_test_mongo:
+        name: Check Infra Status
+        needs: check_infra
+        runs-on: ubuntu-latest  
+        defaults:
+            run:
+                working-directory: ./mongo
+        steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+        - name: Docker login
+          if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'
+          uses: docker/login-action@v3
+          with:
+            username: ${{ secrets.DOCKER_USERNAME }}
+            password: ${{ secrets.DOCKER_PASSWORD }}
+
+        - name: Docker Build and Push
+          if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'
+          uses: docker/build-push-action@v6
+          with:
+            push: true
+            context: ./mongo
+            tags: |
+               ${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}:${{ needs.check_infra.outputs.version }}-db
+
+    deploy_ec2:
+        needs: [check_infra, build_test_backend, build_test_frontend, build_test_mongo]
+        name: Deploy Apps
+        runs-on: ubuntu-latest  
+        steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0        
+
+        - name: Setup SSH
+          run: |
+            mkdir -p ~/.ssh
+            echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+            chmod 600 ~/.ssh/id_rsa
+            ssh-keyscan -H ${{ needs.check_infra.outputs.ec2_ip }} >> ~/.ssh/known_hosts
+
+        - name: COPY compose
+          run: |
+            pwd
+            ls -la
+            scp -C compose.yml ec2-user@${{ needs.check_infra.outputs.ec2_ip }}:  ~/  
+            
+        - name: Deploy Apps
+          run: |
+           ssh ec2-user@${{ needs.check_infra.outputs.ec2_ip }} '
+            pwd
+            ls -la
+            export REGISTRY=${{ secrets.DOCKER_USERNAME }}
+            export REPONAME=${{ github.event.repository.name }}
+            export VERSION=${{ needs.check_infra.outputs.version}}
+            export API=http://${{ needs.check_infra.outputs.ec2_ip }}:3333
+            export CORS=http://${{ needs.check_infra.outputs.ec2_ip }}:5173
+
+            sed -i "s/\${VERSION_BACK:-[^}]*}/${{ needs.check_infra.outputs.version }}}"
+            sed -i "s/\${VERSION_FRONT:-[^}]*}/${{ needs.check_infra.outputs.version }}}"
+            sed -i "s/\${VERSION_DB:-[^}]*}/${{ needs.check_infra.outputs.version }}}"
+
+            cat compose.yml
+
+            ### start compose
+            docker compose -f compose.yml up -d
+
+            #### docker status
+
+            docker compose ps 
+            '
