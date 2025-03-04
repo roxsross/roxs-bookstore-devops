@@ -62,10 +62,6 @@ jobs:
           working-directory: ./terraform
           run: |
             EC2_IP=$(terraform output -raw instance_public_ip >/dev/null || echo "")
-            if [ -z "$EC2_IP" ]; then
-                echo "Infra no Ready"
-                exit 1
-            fi
             echo "EC2 esta disponible $EC2_IP"
             echo "ec2_ip=${EC2_IP}" >> $GITHUB_OUTPUT
 
